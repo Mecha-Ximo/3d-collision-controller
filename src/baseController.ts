@@ -1,6 +1,6 @@
 import { Quaternion, Vector3 } from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { Movement } from './movement';
+import { MovementDirection } from './movement';
 
 /**
  * TODO:
@@ -48,7 +48,7 @@ export class BaseController {
 
   private readonly eventListeners: ((e: ControllerState) => void)[] = [];
 
-  private readonly movement = new Movement();
+  private readonly movement = new MovementDirection();
 
   constructor(private readonly pointerLockControls: PointerLockControls, private config: ControllerConfig) {
     this.pointerLockControls.addEventListener('unlock', () => this.disable());
@@ -91,7 +91,7 @@ export class BaseController {
       position: this.pointerLockControls.camera.position.clone(),
       quaternion: this.pointerLockControls.camera.quaternion.clone(),
       viewDirection,
-      movementDirection: this.movement.getMovementDirection(viewDirection).clone(),
+      movementDirection: this.movement.get(viewDirection).clone().normalize(),
     };
   }
 
@@ -123,20 +123,27 @@ export class BaseController {
   }
 
   private update(): void {
+    // normalize movement distance depending on keys pressed (solve the issue moving faster in diagonal)
+    const keysPressed =
+      +this.movementRegistry.isMovingBackward +
+      +this.movementRegistry.isMovingForward +
+      +this.movementRegistry.isMovingLeft +
+      +this.movementRegistry.isMovingRight;
+
     if (this.movementRegistry.isMovingForward) {
-      this.pointerLockControls.moveForward(this.config.movementDistance);
+      this.pointerLockControls.moveForward(this.config.movementDistance / keysPressed);
     }
 
     if (this.movementRegistry.isMovingBackward) {
-      this.pointerLockControls.moveForward(-this.config.movementDistance);
+      this.pointerLockControls.moveForward(-this.config.movementDistance / keysPressed);
     }
 
     if (this.movementRegistry.isMovingLeft) {
-      this.pointerLockControls.moveRight(-this.config.movementDistance);
+      this.pointerLockControls.moveRight(-this.config.movementDistance / keysPressed);
     }
 
     if (this.movementRegistry.isMovingRight) {
-      this.pointerLockControls.moveRight(this.config.movementDistance);
+      this.pointerLockControls.moveRight(this.config.movementDistance / keysPressed);
     }
   }
 

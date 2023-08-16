@@ -24,9 +24,11 @@ camera.updateProjectionMatrix();
 
 const sceneRoot = new Scene();
 const cube = createCube(1, 1, 1, 0xddcc22, new Vector3(0, 0, 0));
-const cube2 = createCube(1, 1, 1, 0xddcc22, new Vector3(3, 2, 0));
-sceneRoot.add(cube);
-sceneRoot.add(cube2);
+const cube2 = createCube(1, 1, 1, 0x66cc22, new Vector3(3, 2, 0));
+const cube3 = createCube(1, 1, 1, 0xdd2222, new Vector3(6, 0, 0));
+const cube4 = createCube(1, 1, 1, 0xccccbb, new Vector3(3, 2, 3));
+const cube5 = createCube(1, 1, 1, 0x11ccdd, new Vector3(3, 2, -3));
+sceneRoot.add(cube, cube2, cube3, cube4, cube5);
 
 const renderer = new WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -34,20 +36,17 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 const pointerController = new PointerLockControls(camera, canvas);
 const baseController = new BaseController(pointerController, {
   cameraHeight: 1,
-  movementDistance: 0.15,
+  movementDistance: 0.09,
   movementKeys: { forward: 'w', backward: 's', left: 'a', right: 'd' },
 });
 const controller = new CollisionController(
   baseController,
-  { highCollisionHeight: 2, lowCollisionHeight: 0.2 },
+  { highCollisionHeight: 2, lowCollisionHeight: 0.2, collisionDistance: 3.5 },
   sceneRoot,
   true
 );
-window.addEventListener('click', (e) => {
-  // controller.connect();
-
+window.addEventListener('click', () => {
   controller.enable();
-  // controller.disable();
 });
 
 function render(): void {

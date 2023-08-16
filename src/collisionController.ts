@@ -1,32 +1,38 @@
-import { ArrowHelper, Group, Intersection, Raycaster, Scene, Vector3 } from 'three';
+import { Intersection, Raycaster, Scene, Vector3 } from 'three';
 import { BaseController } from './baseController';
+import { ControllerDebugger } from './debug/controllerDebugger';
 
 interface CollisionControllerConfig {
+  /**
+   * Position of high raycaster.
+   */
   highCollisionHeight: number;
+  /**
+   * Position of low raycaster.
+   */
   lowCollisionHeight: number;
+  /**
+   * The distance to trigger a collision.
+   */
+  collisionDistance: number;
 }
-
-// TODO: set debug mode through env variable
 
 export class CollisionController {
   private readonly lowRaycaster: Raycaster;
 
   private readonly highRaycaster: Raycaster;
 
-  private readonly debugGroup = new Group();
+  private readonly debugger: ControllerDebugger | null;
 
   constructor(
     private readonly baseController: BaseController,
     private config: CollisionControllerConfig,
     private readonly sceneGraph: Scene,
-    private readonly debugMode = false
+    debugMode = false
   ) {
     this.lowRaycaster = new Raycaster();
     this.highRaycaster = new Raycaster();
-
-    if (this.debugMode) {
-      this.sceneGraph.add(this.debugGroup);
-    }
+    this.debugger = debugMode ? new ControllerDebugger(sceneGraph, 50) : null;
 
     this.baseController.addEventListener('keydown', (state) => {
       const clonePos = state.position.clone();
@@ -43,6 +49,8 @@ export class CollisionController {
         clonePos,
         state.movementDirection
       );
+
+      console.log(lowIntersections);
     });
   }
 
@@ -60,20 +68,26 @@ export class CollisionController {
     origin.y = shotHeight;
     raycaster.set(origin, direction.normalize());
 
-    // filter debug group
-    const meshes = this.sceneGraph.children.filter((child) => child.uuid !== this.debugGroup.uuid);
+    const meshesToIntersect = this.debugger?.filterDebuggerMeshes() ?? this.sceneGraph.children;
+    const intersections = raycaster.intersectObjects(meshesToIntersect, true);
+    const minDistanceIntersection = this.getMinDistanceIntersection(intersections);
 
-    const intersections = raycaster.intersectObjects(meshes, true);
-    if (this.debugMode) {
-      this.addDebugArrow(direction, origin, 6, intersections.length ? 0x00ff00 : 0xff0000);
-    }
+    this.debugger?.addArrowHelper({
+      direction,
+      origin,
+      length: 4,
+      color: minDistanceIntersection ? 0xff0000 : 0x00ff00,
+    });
 
     return intersections;
   }
 
-  private addDebugArrow(direction: Vector3, origin: Vector3, distance: number, color: number): void {
-    const arrow = new ArrowHelper(direction, origin, distance, color);
-
-    this.debugGroup.add(arrow);
+  private getMinDistanceIntersection(intersections: Intersection[]): Intersection | null {
+    if (!intersections.length) {
+      return null;
+    }
+    // careful with invariant: we rely on raycaster returning sorted intersections
+    const minDistanceIntersection = intersections[0];
+    return minDistanceIntersection.distance < this.config.collisionDistance ? minDistanceIntersection : null;
   }
 }
