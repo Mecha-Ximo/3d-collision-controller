@@ -1,7 +1,7 @@
 import { Euler, Vector3 } from 'three';
 import { Direction } from './movements/direction';
 
-interface MovementState {
+export interface MovementState {
   front: boolean;
   back: boolean;
   left: boolean;

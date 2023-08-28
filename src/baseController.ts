@@ -1,4 +1,4 @@
-import { Quaternion, Vector3 } from 'three';
+import { Camera, Quaternion, Vector3 } from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { MovementDirection } from './movement';
 
@@ -10,23 +10,16 @@ import { MovementDirection } from './movement';
  */
 
 export interface ControllerState {
+  isMoving: boolean;
   movementDirection: Vector3;
   viewDirection: Vector3;
   position: Vector3;
   quaternion: Quaternion;
 }
 
-interface MovementKeys {
-  forward: string;
-  backward: string;
-  left: string;
-  right: string;
-}
-
-interface ControllerConfig {
+export interface ControllerConfig {
   cameraHeight: number;
   movementDistance: number;
-  movementKeys: MovementKeys;
 }
 
 interface MovementRegistry {
@@ -37,6 +30,8 @@ interface MovementRegistry {
 }
 
 export class BaseController {
+  private readonly controller: PointerLockControls;
+
   private readonly movementRegistry: MovementRegistry = {
     isMovingBackward: false,
     isMovingForward: false,
@@ -44,15 +39,12 @@ export class BaseController {
     isMovingRight: false,
   };
 
-  private animationFrameId: number | null = null;
-
-  private readonly eventListeners: ((e: ControllerState) => void)[] = [];
-
   private readonly movement = new MovementDirection();
 
-  constructor(private readonly pointerLockControls: PointerLockControls, private config: ControllerConfig) {
-    this.pointerLockControls.addEventListener('unlock', () => this.disable());
-    this.pointerLockControls.camera.position.y = this.config.cameraHeight;
+  constructor(camera: Camera, domElement: HTMLElement, private config: ControllerConfig) {
+    this.controller = new PointerLockControls(camera, domElement);
+    this.controller.addEventListener('unlock', () => this.disable());
+    this.controller.camera.position.y = this.config.cameraHeight;
   }
 
   /**
@@ -65,33 +57,28 @@ export class BaseController {
    * ```
    */
   public enable(): void {
-    this.pointerLockControls.lock();
-    this.listenMovementKeys();
-    this.autoUpdate();
+    this.controller.lock();
   }
 
   /**
    * Disables the use of the controller.
    */
   public disable(): void {
-    this.pointerLockControls.unlock();
-    this.stopListeningMovementKeys();
-    if (this.animationFrameId) {
-      window.cancelAnimationFrame(this.animationFrameId);
-    }
+    this.controller.unlock();
   }
 
   /**
    * Retrieves the controller state.
    */
   public get controllerState(): ControllerState {
-    const viewDirection = this.pointerLockControls.camera.getWorldDirection(new Vector3()).clone();
+    const viewDirection = this.controller.camera.getWorldDirection(new Vector3()).clone();
 
     return {
-      position: this.pointerLockControls.camera.position.clone(),
-      quaternion: this.pointerLockControls.camera.quaternion.clone(),
+      position: this.controller.camera.position.clone(),
+      quaternion: this.controller.camera.quaternion.clone(),
       viewDirection,
       movementDirection: this.movement.get(viewDirection).clone().normalize(),
+      isMoving: Object.values(this.movementRegistry).some((movement) => movement),
     };
   }
 
@@ -103,88 +90,47 @@ export class BaseController {
     this.config = { ...this.config, ...update };
   }
 
-  public addEventListener(_event: 'keydown', listener: (e: ControllerState) => void): void {
-    this.eventListeners.push(listener);
-  }
-
-  private listenMovementKeys(): void {
-    window.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('keyup', this.onKeyUp);
-  }
-
-  private stopListeningMovementKeys(): void {
-    window.removeEventListener('keydown', this.onKeyDown);
-    window.removeEventListener('keyup', this.onKeyUp);
-  }
-
-  private autoUpdate(): void {
-    this.update();
-    this.animationFrameId = requestAnimationFrame(() => this.autoUpdate());
-  }
-
-  private update(): void {
+  public update(movementDistance = this.config.movementDistance): void {
     // normalize movement distance depending on keys pressed (solve the issue moving faster in diagonal)
-    const keysPressed =
-      +this.movementRegistry.isMovingBackward +
-      +this.movementRegistry.isMovingForward +
-      +this.movementRegistry.isMovingLeft +
-      +this.movementRegistry.isMovingRight;
+    const amountOfMovement = Object.values(this.movementRegistry).reduce(
+      (totalMovement: number, movement: boolean) => totalMovement + +movement,
+      0
+    );
 
     if (this.movementRegistry.isMovingForward) {
-      this.pointerLockControls.moveForward(this.config.movementDistance / keysPressed);
+      this.controller.moveForward(movementDistance / amountOfMovement);
     }
 
     if (this.movementRegistry.isMovingBackward) {
-      this.pointerLockControls.moveForward(-this.config.movementDistance / keysPressed);
+      this.controller.moveForward(-movementDistance / amountOfMovement);
     }
 
     if (this.movementRegistry.isMovingLeft) {
-      this.pointerLockControls.moveRight(-this.config.movementDistance / keysPressed);
+      this.controller.moveRight(-movementDistance / amountOfMovement);
     }
 
     if (this.movementRegistry.isMovingRight) {
-      this.pointerLockControls.moveRight(this.config.movementDistance / keysPressed);
+      this.controller.moveRight(movementDistance / amountOfMovement);
     }
   }
 
-  private readonly onKeyDown = (e: KeyboardEvent) => this.registerKeyPress(e);
-
-  private readonly onKeyUp = (e: KeyboardEvent) => this.unregisterKeyPress(e);
-
-  private unregisterKeyPress(e: KeyboardEvent): void {
-    if (e.key === this.config.movementKeys.forward) {
-      this.movementRegistry.isMovingForward = false;
-      this.movement.update({ front: false });
-    } else if (e.key === this.config.movementKeys.backward) {
-      this.movementRegistry.isMovingBackward = false;
-      this.movement.update({ back: false });
-    } else if (e.key === this.config.movementKeys.left) {
-      this.movementRegistry.isMovingLeft = false;
-      this.movement.update({ left: false });
-    } else if (e.key === this.config.movementKeys.right) {
-      this.movementRegistry.isMovingRight = false;
-      this.movement.update({ right: false });
-    }
+  public moveForward(move: boolean): void {
+    this.movementRegistry.isMovingForward = move;
+    this.movement.update({ front: move });
   }
 
-  /**
-   * REFACTOR
-   */
-  private registerKeyPress(e: KeyboardEvent): void {
-    if (e.key === this.config.movementKeys.forward) {
-      this.movementRegistry.isMovingForward = true;
-      this.movement.update({ front: true });
-    } else if (e.key === this.config.movementKeys.backward) {
-      this.movementRegistry.isMovingBackward = true;
-      this.movement.update({ back: true });
-    } else if (e.key === this.config.movementKeys.left) {
-      this.movementRegistry.isMovingLeft = true;
-      this.movement.update({ left: true });
-    } else if (e.key === this.config.movementKeys.right) {
-      this.movementRegistry.isMovingRight = true;
-      this.movement.update({ right: true });
-    }
+  public moveBackward(move: boolean): void {
+    this.movementRegistry.isMovingBackward = move;
+    this.movement.update({ back: move });
+  }
 
-    this.eventListeners.forEach((listener) => listener(this.controllerState));
+  public moveLeft(move: boolean): void {
+    this.movementRegistry.isMovingLeft = move;
+    this.movement.update({ left: move });
+  }
+
+  public moveRight(move: boolean): void {
+    this.movementRegistry.isMovingRight = move;
+    this.movement.update({ right: move });
   }
 }

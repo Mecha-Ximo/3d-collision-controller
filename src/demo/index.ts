@@ -8,8 +8,6 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { BaseController } from '../baseController';
 import { CollisionController } from '../collisionController';
 
 const canvas = document.getElementById('demo');
@@ -33,16 +31,16 @@ sceneRoot.add(cube, cube2, cube3, cube4, cube5);
 const renderer = new WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 
-const pointerController = new PointerLockControls(camera, canvas);
-const baseController = new BaseController(pointerController, {
-  cameraHeight: 1,
-  movementDistance: 0.09,
-  movementKeys: { forward: 'w', backward: 's', left: 'a', right: 'd' },
-});
-
 const controller = new CollisionController(
-  baseController,
-  { highCollisionHeight: 2, lowCollisionHeight: 0.2, collisionDistance: 3.5 },
+  camera,
+  canvas,
+  {
+    highCollisionHeight: 2,
+    lowCollisionHeight: 0.2,
+    collisionDistance: 1,
+    cameraHeight: 1,
+    movementDistance: 0.15,
+  },
   sceneRoot,
   !!import.meta.env.VITE_DEBUG
 );
@@ -74,7 +72,13 @@ function checkDOMElement<T extends keyof HTMLElementTagNameMap>(
   return element instanceof HTMLElement && element.tagName.toLowerCase() === expectedNodeType;
 }
 
-function createCube(width: number, height: number, depth: number, color: ColorRepresentation, position: Vector3): Mesh {
+function createCube(
+  width: number,
+  height: number,
+  depth: number,
+  color: ColorRepresentation,
+  position: Vector3
+): Mesh {
   const geometry = new BoxGeometry(width, height, depth);
   const material = new MeshBasicMaterial({ color });
 
@@ -83,3 +87,40 @@ function createCube(width: number, height: number, depth: number, color: ColorRe
 
   return mesh;
 }
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'w') {
+    controller.moveForward(true);
+  }
+
+  if (e.key === 's') {
+    controller.moveBackward(true);
+  }
+
+  if (e.key === 'a') {
+    controller.moveLeft(true);
+  }
+
+  if (e.key === 'd') {
+    controller.moveRight(true);
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  console.log('KEYUP', e.key);
+  if (e.key === 'w') {
+    controller.moveForward(false);
+  }
+
+  if (e.key === 's') {
+    controller.moveBackward(false);
+  }
+
+  if (e.key === 'a') {
+    controller.moveLeft(false);
+  }
+
+  if (e.key === 'd') {
+    controller.moveRight(false);
+  }
+});

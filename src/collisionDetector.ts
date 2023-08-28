@@ -19,7 +19,7 @@ export class CollisionDetector {
 
   constructor(private readonly config: CollisionDetectorConfig) {
     this.raycaster = new Raycaster();
-    this.debugger = config.debugMode ? new ControllerDebugger(config.sceneGraph, 50) : null;
+    this.debugger = config.debugMode ? new ControllerDebugger(config.sceneGraph, 500) : null;
   }
 
   /**
@@ -40,14 +40,15 @@ export class CollisionDetector {
     origin.y = this.config.height;
     this.raycaster.set(origin, direction.normalize());
 
-    const meshesToIntersect = this.debugger?.filterDebuggerMeshes() ?? this.config.sceneGraph.children;
+    const meshesToIntersect =
+      this.debugger?.filterDebuggerMeshes() ?? this.config.sceneGraph.children;
     const intersections = this.raycaster.intersectObjects(meshesToIntersect, true);
     const minDistanceIntersection = this.getMinDistanceIntersection(intersections);
 
     this.debugger?.addArrowHelper({
       direction,
       origin,
-      length: 4,
+      length: this.config.collisionDistance * 4,
       color: minDistanceIntersection ? 0xff0000 : 0x00ff00,
     });
 
@@ -60,6 +61,8 @@ export class CollisionDetector {
     }
     // careful with invariant: we rely on raycaster returning sorted intersections
     const minDistanceIntersection = intersections[0];
-    return minDistanceIntersection.distance < this.config.collisionDistance ? minDistanceIntersection : null;
+    return minDistanceIntersection.distance < this.config.collisionDistance
+      ? minDistanceIntersection
+      : null;
   }
 }
