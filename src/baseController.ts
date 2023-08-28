@@ -9,7 +9,7 @@ import { MovementDirection } from './movement';
  * - refactor listeners to Map
  */
 
-interface ControllerState {
+export interface ControllerState {
   movementDirection: Vector3;
   viewDirection: Vector3;
   position: Vector3;

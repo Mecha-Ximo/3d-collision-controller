@@ -1,6 +1,8 @@
-import { Intersection, Raycaster, Scene, Vector3 } from 'three';
+import { Object3D } from 'three';
 import { BaseController } from './baseController';
-import { ControllerDebugger } from './debug/controllerDebugger';
+import { CollisionDetector } from './collisionDetector';
+
+// TODO: add config setter
 
 interface CollisionControllerConfig {
   /**
@@ -18,76 +20,40 @@ interface CollisionControllerConfig {
 }
 
 export class CollisionController {
-  private readonly lowRaycaster: Raycaster;
+  private readonly lowCollisionDetector: CollisionDetector;
 
-  private readonly highRaycaster: Raycaster;
-
-  private readonly debugger: ControllerDebugger | null;
+  private readonly highCollisionDetector: CollisionDetector;
 
   constructor(
     private readonly baseController: BaseController,
-    private config: CollisionControllerConfig,
-    private readonly sceneGraph: Scene,
+    config: CollisionControllerConfig,
+    sceneGraph: Object3D,
     debugMode = false
   ) {
-    this.lowRaycaster = new Raycaster();
-    this.highRaycaster = new Raycaster();
-    this.debugger = debugMode ? new ControllerDebugger(sceneGraph, 50) : null;
+    this.lowCollisionDetector = new CollisionDetector({
+      sceneGraph: sceneGraph,
+      collisionDistance: config.collisionDistance,
+      debugMode,
+      height: config.lowCollisionHeight,
+    });
 
+    this.highCollisionDetector = new CollisionDetector({
+      sceneGraph: sceneGraph,
+      collisionDistance: config.collisionDistance,
+      debugMode,
+      height: config.highCollisionHeight,
+    });
+
+    // TODO: refactor
     this.baseController.addEventListener('keydown', (state) => {
-      const clonePos = state.position.clone();
+      const lowCollision = this.lowCollisionDetector.checkCollision(state);
+      const highCollision = this.highCollisionDetector.checkCollision(state);
 
-      const lowIntersections = this.triggerRaycaster(
-        this.lowRaycaster,
-        this.config.lowCollisionHeight,
-        clonePos,
-        state.movementDirection
-      );
-      const highIntersections = this.triggerRaycaster(
-        this.highRaycaster,
-        this.config.highCollisionHeight,
-        clonePos,
-        state.movementDirection
-      );
-
-      console.log(lowIntersections);
+      console.log(highCollision, lowCollision);
     });
   }
 
   public enable(): void {
     this.baseController.enable();
-  }
-
-  public triggerRaycaster(
-    raycaster: Raycaster,
-    shotHeight: number,
-    position: Vector3,
-    direction: Vector3
-  ): Intersection[] {
-    const origin = position.clone();
-    origin.y = shotHeight;
-    raycaster.set(origin, direction.normalize());
-
-    const meshesToIntersect = this.debugger?.filterDebuggerMeshes() ?? this.sceneGraph.children;
-    const intersections = raycaster.intersectObjects(meshesToIntersect, true);
-    const minDistanceIntersection = this.getMinDistanceIntersection(intersections);
-
-    this.debugger?.addArrowHelper({
-      direction,
-      origin,
-      length: 4,
-      color: minDistanceIntersection ? 0xff0000 : 0x00ff00,
-    });
-
-    return intersections;
-  }
-
-  private getMinDistanceIntersection(intersections: Intersection[]): Intersection | null {
-    if (!intersections.length) {
-      return null;
-    }
-    // careful with invariant: we rely on raycaster returning sorted intersections
-    const minDistanceIntersection = intersections[0];
-    return minDistanceIntersection.distance < this.config.collisionDistance ? minDistanceIntersection : null;
   }
 }
