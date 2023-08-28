@@ -39,11 +39,12 @@ const baseController = new BaseController(pointerController, {
   movementDistance: 0.09,
   movementKeys: { forward: 'w', backward: 's', left: 'a', right: 'd' },
 });
+
 const controller = new CollisionController(
   baseController,
   { highCollisionHeight: 2, lowCollisionHeight: 0.2, collisionDistance: 3.5 },
   sceneRoot,
-  true
+  !!import.meta.env.VITE_DEBUG
 );
 window.addEventListener('click', () => {
   controller.enable();
