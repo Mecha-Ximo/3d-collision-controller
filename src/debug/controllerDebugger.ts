@@ -29,7 +29,12 @@ export class ControllerDebugger {
    * @param arrowConfig - the arrow configuration
    */
   public addArrowHelper(arrowConfig: ArrowConfiguration): void {
-    const arrow = new ArrowHelper(arrowConfig.direction, arrowConfig.origin, arrowConfig.length, arrowConfig.color);
+    const arrow = new ArrowHelper(
+      arrowConfig.direction,
+      arrowConfig.origin,
+      arrowConfig.length,
+      arrowConfig.color
+    );
     this.debugGroup.add(arrow);
     this.arrows.push(arrow);
 
