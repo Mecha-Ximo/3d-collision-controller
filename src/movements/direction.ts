@@ -1,7 +1,7 @@
 import { Euler, Vector3 } from 'three';
 
 export class Direction {
-  public isMoving = false;
+  public isActive = false;
 
   constructor(private readonly eulerRotation: Euler) {}
 
