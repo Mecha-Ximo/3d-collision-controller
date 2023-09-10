@@ -8,6 +8,13 @@ export interface MovementState {
   right: boolean;
 }
 
+export interface MovementRegistry {
+  isMovingForward: boolean;
+  isMovingBackward: boolean;
+  isMovingLeft: boolean;
+  isMovingRight: boolean;
+}
+
 /**
  *  Handles movement direction.
  * Will compute combinations of presses (i.e: Front + left === 45º left)
@@ -36,25 +43,38 @@ export class MovementDirection {
 
   private readonly directions = [this.front, this.back, this.left, this.right] as const;
 
+  public get movementRegistry(): MovementRegistry {
+    return {
+      isMovingBackward: this.back.isActive,
+      isMovingForward: this.front.isActive,
+      isMovingLeft: this.left.isActive,
+      isMovingRight: this.right.isActive,
+    };
+  }
+
+  public get isMoving(): boolean {
+    return Object.values(this.movementRegistry).some((movement) => movement);
+  }
+
   /**
    * Update the movement state.
    * @param newMovementState - the new state
    */
   public update(newMovementState: Partial<MovementState>): void {
     if (newMovementState.back !== undefined) {
-      this.back.isMoving = newMovementState.back;
+      this.back.isActive = newMovementState.back;
     }
 
     if (newMovementState.front !== undefined) {
-      this.front.isMoving = newMovementState.front;
+      this.front.isActive = newMovementState.front;
     }
 
     if (newMovementState.left !== undefined) {
-      this.left.isMoving = newMovementState.left;
+      this.left.isActive = newMovementState.left;
     }
 
     if (newMovementState.right !== undefined) {
-      this.right.isMoving = newMovementState.right;
+      this.right.isActive = newMovementState.right;
     }
   }
 
@@ -63,16 +83,16 @@ export class MovementDirection {
    * @param viewDirection - the vector to be used as a base
    * @returns the movement direction vector
    */
-  public get(viewDirection: Vector3): Vector3 {
+  public getDirection(viewDirection: Vector3): Vector3 {
     const baseDirection = viewDirection.clone().normalize();
     baseDirection.y = 0; // we don't consider 'y' plane so far (constantly moving in X-Z) when 3d movement implement it will matter
 
     return this.directions.reduce((movementDirection, dir) => {
-      if (dir.isMoving) {
+      if (dir.isActive) {
         movementDirection.add(dir.apply(baseDirection));
       }
 
-      return movementDirection;
+      return movementDirection.normalize();
     }, new Vector3());
   }
 }

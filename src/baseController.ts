@@ -1,13 +1,6 @@
 import { Camera, Quaternion, Vector3 } from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { MovementDirection } from './movement';
-
-/**
- * TODO:
- * - inject PointerLock or create in ctor ?
- * - remove auto update option, it is mandatory
- * - refactor listeners to Map
- */
+import { MovementDirection } from './movementDirection';
 
 export interface ControllerState {
   isMoving: boolean;
@@ -22,26 +15,13 @@ export interface ControllerConfig {
   movementDistance: number;
 }
 
-interface MovementRegistry {
-  isMovingForward: boolean;
-  isMovingBackward: boolean;
-  isMovingLeft: boolean;
-  isMovingRight: boolean;
-}
-
 export class BaseController {
   private readonly controller: PointerLockControls;
 
-  private readonly movementRegistry: MovementRegistry = {
-    isMovingBackward: false,
-    isMovingForward: false,
-    isMovingLeft: false,
-    isMovingRight: false,
-  };
-
-  private readonly movement = new MovementDirection();
+  private readonly movementDirection: MovementDirection;
 
   constructor(camera: Camera, domElement: HTMLElement, private config: ControllerConfig) {
+    this.movementDirection = new MovementDirection();
     this.controller = new PointerLockControls(camera, domElement);
     this.controller.addEventListener('unlock', () => this.disable());
     this.controller.camera.position.y = this.config.cameraHeight;
@@ -70,15 +50,15 @@ export class BaseController {
   /**
    * Retrieves the controller state.
    */
-  public get controllerState(): ControllerState {
+  public get state(): ControllerState {
     const viewDirection = this.controller.camera.getWorldDirection(new Vector3()).clone();
 
     return {
       position: this.controller.camera.position.clone(),
       quaternion: this.controller.camera.quaternion.clone(),
       viewDirection,
-      movementDirection: this.movement.get(viewDirection).clone().normalize(),
-      isMoving: Object.values(this.movementRegistry).some((movement) => movement),
+      movementDirection: this.movementDirection.getDirection(viewDirection),
+      isMoving: this.movementDirection.isMoving,
     };
   }
 
@@ -90,47 +70,59 @@ export class BaseController {
     this.config = { ...this.config, ...update };
   }
 
-  public update(movementDistance = this.config.movementDistance): void {
+  /**
+   * Updates the controller position.
+   * @param movementDistance - the distance to move.
+   */
+  public updatePosition(movementDistance = this.config.movementDistance): void {
     // normalize movement distance depending on keys pressed (solve the issue moving faster in diagonal)
-    const amountOfMovement = Object.values(this.movementRegistry).reduce(
+    const amountOfMovement = Object.values(this.movementDirection.movementRegistry).reduce(
       (totalMovement: number, movement: boolean) => totalMovement + +movement,
       0
     );
 
-    if (this.movementRegistry.isMovingForward) {
-      this.controller.moveForward(movementDistance / amountOfMovement);
+    const movement = movementDistance / amountOfMovement;
+
+    if (this.movementDirection.movementRegistry.isMovingForward) {
+      this.controller.moveForward(movement);
     }
 
-    if (this.movementRegistry.isMovingBackward) {
-      this.controller.moveForward(-movementDistance / amountOfMovement);
+    if (this.movementDirection.movementRegistry.isMovingBackward) {
+      this.controller.moveForward(-movement);
     }
 
-    if (this.movementRegistry.isMovingLeft) {
-      this.controller.moveRight(-movementDistance / amountOfMovement);
+    if (this.movementDirection.movementRegistry.isMovingLeft) {
+      this.controller.moveRight(-movement);
     }
 
-    if (this.movementRegistry.isMovingRight) {
-      this.controller.moveRight(movementDistance / amountOfMovement);
+    if (this.movementDirection.movementRegistry.isMovingRight) {
+      this.controller.moveRight(movement);
     }
+  }
+
+  /**
+   * Moves the controller camera a certain displacement.
+   * @param displacement - the movement to be applied
+   */
+  public moveCamera(displacement: Vector3): void {
+    this.controller.camera.position.x += displacement.x;
+    this.controller.camera.position.y += displacement.y;
+    this.controller.camera.position.z += displacement.z;
   }
 
   public moveForward(move: boolean): void {
-    this.movementRegistry.isMovingForward = move;
-    this.movement.update({ front: move });
+    this.movementDirection.update({ front: move });
   }
 
   public moveBackward(move: boolean): void {
-    this.movementRegistry.isMovingBackward = move;
-    this.movement.update({ back: move });
+    this.movementDirection.update({ back: move });
   }
 
   public moveLeft(move: boolean): void {
-    this.movementRegistry.isMovingLeft = move;
-    this.movement.update({ left: move });
+    this.movementDirection.update({ left: move });
   }
 
   public moveRight(move: boolean): void {
-    this.movementRegistry.isMovingRight = move;
-    this.movement.update({ right: move });
+    this.movementDirection.update({ right: move });
   }
 }

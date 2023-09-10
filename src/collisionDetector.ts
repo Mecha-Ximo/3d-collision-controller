@@ -6,7 +6,11 @@ export interface CollisionDetectorConfig {
   sceneGraph: Object3D;
   height: number;
   collisionDistance: number;
-  debugMode: boolean;
+  debugger: ControllerDebugger | null;
+}
+
+export interface FaceIntersection extends Intersection {
+  normal: Vector3;
 }
 
 /**
@@ -15,11 +19,8 @@ export interface CollisionDetectorConfig {
 export class CollisionDetector {
   private readonly raycaster: Raycaster;
 
-  private readonly debugger: ControllerDebugger | null;
-
   constructor(private readonly config: CollisionDetectorConfig) {
     this.raycaster = new Raycaster();
-    this.debugger = config.debugMode ? new ControllerDebugger(config.sceneGraph, 500) : null;
   }
 
   /**
@@ -27,12 +28,12 @@ export class CollisionDetector {
    * @param controllerState - the controller state
    * @returns true if a collision is taking place
    */
-  public checkCollision(controllerState: ControllerState): boolean {
+  public getCollision(controllerState: ControllerState): FaceIntersection | null {
     const position = controllerState.position.clone();
     const intersections = this.triggerRaycaster(position, controllerState.movementDirection);
     const minDistanceIntersection = this.getMinDistanceIntersection(intersections);
 
-    return !!minDistanceIntersection;
+    return minDistanceIntersection;
   }
 
   private triggerRaycaster(position: Vector3, direction: Vector3): Intersection[] {
@@ -41,26 +42,44 @@ export class CollisionDetector {
     this.raycaster.set(origin, direction.normalize());
 
     const meshesToIntersect =
-      this.debugger?.filterDebuggerMeshes() ?? this.config.sceneGraph.children;
+      this.config.debugger?.filterDebuggerMeshes() ?? this.config.sceneGraph.children;
     const intersections = this.raycaster.intersectObjects(meshesToIntersect, true);
     const minDistanceIntersection = this.getMinDistanceIntersection(intersections);
 
-    this.debugger?.addArrowHelper({
+    this.config.debugger?.addArrowHelper({
       direction,
       origin,
       length: this.config.collisionDistance * 4,
       color: minDistanceIntersection ? 0xff0000 : 0x00ff00,
     });
 
+    if (minDistanceIntersection) {
+      this.config.debugger?.addArrowHelper({
+        direction: minDistanceIntersection.normal
+          .clone()
+          .transformDirection(minDistanceIntersection.object.matrix)
+          .projectOnPlane(new Vector3(0, 1, 0)),
+        origin: minDistanceIntersection.point,
+        length: this.config.collisionDistance * 6,
+        color: 0xffff00,
+      });
+    }
+
     return intersections;
   }
 
-  private getMinDistanceIntersection(intersections: Intersection[]): Intersection | null {
-    if (!intersections.length) {
+  private getMinDistanceIntersection(intersections: Intersection[]): FaceIntersection | null {
+    // only interested in intersections with face (surfaces)
+    const faceIntersections = intersections.filter(
+      (intersection): intersection is FaceIntersection => intersection.normal !== undefined
+    );
+
+    if (!faceIntersections.length) {
       return null;
     }
+
     // careful with invariant: we rely on raycaster returning sorted intersections
-    const minDistanceIntersection = intersections[0];
+    const minDistanceIntersection = faceIntersections[0];
     return minDistanceIntersection.distance < this.config.collisionDistance
       ? minDistanceIntersection
       : null;
