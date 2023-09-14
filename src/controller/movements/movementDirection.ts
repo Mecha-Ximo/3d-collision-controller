@@ -1,5 +1,5 @@
 import { Euler, Vector3 } from 'three';
-import { Direction } from './movements/direction';
+import { Direction } from './direction';
 
 export interface MovementState {
   front: boolean;

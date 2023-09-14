@@ -1,11 +1,11 @@
-import { Camera, Object3D, Vector2, Vector3 } from 'three';
+import { Camera, Scene, Vector2, Vector3 } from 'three';
+import { ControllerDebugger } from '../debug/controllerDebugger';
 import { BaseController, ControllerConfig, ControllerState } from './baseController';
 import { CollisionDetector, FaceIntersection } from './collisionDetector';
-import { ControllerDebugger } from './debug/controllerDebugger';
 
 // TODO: add config setter
 
-interface CollisionControllerConfig extends ControllerConfig {
+export interface CollisionControllerConfig extends ControllerConfig {
   /**
    * Position of high raycaster.
    */
@@ -33,7 +33,7 @@ export class CollisionController {
     camera: Camera,
     domElement: HTMLElement,
     config: CollisionControllerConfig,
-    sceneGraph: Object3D,
+    sceneGraph: Scene,
     debugMode = false
   ) {
     this.baseController = new BaseController(camera, domElement, config);
