@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "exports": "./dist/index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "vite",
     "dev:debug": "VITE_DEBUG=1 vite",
@@ -10,9 +13,10 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@types/three": "^0.155.0",
     "typescript": "^5.0.2",
     "vite": "^4.4.5",
-    "@types/three": "^0.155.0"
+    "vite-plugin-dts": "^3.5.3"
   },
   "dependencies": {
     "three": "^0.155.0"
