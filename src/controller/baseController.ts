@@ -1,6 +1,6 @@
 import { Camera, Quaternion, Vector3 } from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { MovementDirection } from './movementDirection';
+import { MovementDirection } from './movements/movementDirection';
 
 export interface ControllerState {
   isMoving: boolean;

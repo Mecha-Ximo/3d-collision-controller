@@ -8,7 +8,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
-import { CollisionController } from '../collisionController';
+import { setUpController } from './controller';
 
 const canvas = document.getElementById('demo');
 
@@ -39,22 +39,7 @@ sceneRoot.add(cube, cube2, cube3, cube4, cube5, cube6);
 const renderer = new WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 
-const controller = new CollisionController(
-  camera,
-  canvas,
-  {
-    highCollisionHeight: 2,
-    lowCollisionHeight: 0.2,
-    collisionDistance: 1,
-    cameraHeight: 1.5,
-    movementDistance: 0.15,
-  },
-  sceneRoot,
-  !!import.meta.env.VITE_DEBUG
-);
-window.addEventListener('click', () => {
-  controller.enable();
-});
+setUpController(camera, canvas, sceneRoot);
 
 function render(): void {
   renderer.render(sceneRoot, camera);
@@ -97,39 +82,3 @@ function createCube(
 
   return mesh;
 }
-
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'w') {
-    controller.moveForward(true);
-  }
-
-  if (e.key === 's') {
-    controller.moveBackward(true);
-  }
-
-  if (e.key === 'a') {
-    controller.moveLeft(true);
-  }
-
-  if (e.key === 'd') {
-    controller.moveRight(true);
-  }
-});
-
-window.addEventListener('keyup', (e) => {
-  if (e.key === 'w') {
-    controller.moveForward(false);
-  }
-
-  if (e.key === 's') {
-    controller.moveBackward(false);
-  }
-
-  if (e.key === 'a') {
-    controller.moveLeft(false);
-  }
-
-  if (e.key === 'd') {
-    controller.moveRight(false);
-  }
-});

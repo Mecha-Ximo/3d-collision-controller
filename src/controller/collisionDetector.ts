@@ -1,6 +1,6 @@
 import { Intersection, Object3D, Raycaster, Vector3 } from 'three';
+import { ControllerDebugger } from '../debug/controllerDebugger';
 import { ControllerState } from './baseController';
-import { ControllerDebugger } from './debug/controllerDebugger';
 
 export interface CollisionDetectorConfig {
   sceneGraph: Object3D;
@@ -29,43 +29,19 @@ export class CollisionDetector {
    * @returns true if a collision is taking place
    */
   public getCollision(controllerState: ControllerState): FaceIntersection | null {
-    const position = controllerState.position.clone();
-    const intersections = this.triggerRaycaster(position, controllerState.movementDirection);
-    const minDistanceIntersection = this.getMinDistanceIntersection(intersections);
-
-    return minDistanceIntersection;
-  }
-
-  private triggerRaycaster(position: Vector3, direction: Vector3): Intersection[] {
-    const origin = position.clone();
+    const origin = controllerState.position.clone();
+    const direction = controllerState.movementDirection.clone();
     origin.y = this.config.height;
     this.raycaster.set(origin, direction.normalize());
 
     const meshesToIntersect =
       this.config.debugger?.filterDebuggerMeshes() ?? this.config.sceneGraph.children;
     const intersections = this.raycaster.intersectObjects(meshesToIntersect, true);
-    const minDistanceIntersection = this.getMinDistanceIntersection(intersections);
+    const collision = this.getMinDistanceIntersection(intersections);
 
-    this.config.debugger?.addArrowHelper({
-      direction,
-      origin,
-      length: this.config.collisionDistance * 4,
-      color: minDistanceIntersection ? 0xff0000 : 0x00ff00,
-    });
+    this.config.debugger?.addDebuggingArrows(direction, origin, collision);
 
-    if (minDistanceIntersection) {
-      this.config.debugger?.addArrowHelper({
-        direction: minDistanceIntersection.normal
-          .clone()
-          .transformDirection(minDistanceIntersection.object.matrix)
-          .projectOnPlane(new Vector3(0, 1, 0)),
-        origin: minDistanceIntersection.point,
-        length: this.config.collisionDistance * 6,
-        color: 0xffff00,
-      });
-    }
-
-    return intersections;
+    return collision;
   }
 
   private getMinDistanceIntersection(intersections: Intersection[]): FaceIntersection | null {

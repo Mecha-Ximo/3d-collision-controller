@@ -1,4 +1,5 @@
-import { ArrowHelper, ColorRepresentation, Group, Object3D, Vector3 } from 'three';
+import { ArrowHelper, ColorRepresentation, Group, Object3D, Scene, Vector3 } from 'three';
+import { FaceIntersection } from '../controller/collisionDetector';
 
 export interface ArrowConfiguration {
   direction: Vector3;
@@ -7,12 +8,15 @@ export interface ArrowConfiguration {
   color: ColorRepresentation;
 }
 
+/**
+ * Instantiate to add debugging features to the controller.
+ */
 export class ControllerDebugger {
   private readonly debugGroup = new Group();
 
   private readonly arrows: ArrowHelper[] = [];
 
-  constructor(private readonly sceneNode: Object3D, private readonly maxArrows = 100) {
+  constructor(private readonly sceneNode: Scene, private readonly maxArrows = 100) {
     sceneNode.add(this.debugGroup);
   }
 
@@ -40,6 +44,31 @@ export class ControllerDebugger {
 
     if (this.arrows.length >= this.maxArrows) {
       this.removeFirstArrow();
+    }
+  }
+
+  public addDebuggingArrows(
+    direction: Vector3,
+    origin: Vector3,
+    collision: FaceIntersection | null
+  ): void {
+    this.addArrowHelper({
+      direction,
+      origin,
+      length: 3,
+      color: collision ? 0xff0000 : 0x00ff00,
+    });
+
+    if (collision) {
+      this.addArrowHelper({
+        direction: collision.normal
+          .clone()
+          .transformDirection(collision.object.matrix) // apply object transformation matrix to normal vector, otherwise it is computed on world
+          .projectOnPlane(new Vector3(0, 1, 0)), // project on X-Z plane (when 3d collision detection remove)
+        origin: collision.point,
+        length: 3,
+        color: 0xffff00,
+      });
     }
   }
 
